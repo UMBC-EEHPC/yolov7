@@ -27,6 +27,29 @@ def autopad(k, p=None):  # kernel, padding
     return p
 
 
+class SE(nn.Module):
+    def __init__(self, filters, reduct_ratio):
+        super(SE, self).__init__()
+
+        self.filters = filters
+
+        self.squeeze = nn.AdaptiveAvgPool2d(1)
+
+        self.excitation = nn.Sequential(
+            nn.Linear(filters, filters // reduct_ratio, bias=False),
+            nn.ReLU(True),
+            nn.Linear(filters // reduct_ratio, filters, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        bs, _, _, _ = x.shape
+        y = self.squeeze(x).view(bs, self.filters)
+        y = self.excitation(y).view(bs, self.filters, 1, 1)
+        y= torch.mul(x, y)
+        return torch.add(x, y)
+
+
 class MP(nn.Module):
     def __init__(self, k=2):
         super(MP, self).__init__()
